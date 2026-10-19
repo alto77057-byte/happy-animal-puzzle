@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f4f8ff">
+<title>Happy Animal Puzzle — Jigsaw Challenge</title>
+<style>
+:root{--ink:#24324a;--muted:#68768c;--blue:#6a9df7;--line:#dce6f3;--h:84px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{margin:0;background:linear-gradient(180deg,#f2f7ff,#fff9ed) fixed;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);min-height:100vh}
+button{font:inherit;cursor:pointer;border:0;border-radius:16px;padding:11px 15px;font-weight:750;color:var(--ink);background:#e9f0ff;box-shadow:0 3px 0 #d5e1f5}
+button:focus-visible,select:focus-visible{outline:3px solid #f6c85f;outline-offset:2px}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #d5e1f5}
+.app{max-width:760px;margin:auto;padding:16px 14px 28px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:52px;height:52px;border-radius:17px;background:#ffe5a8;display:grid;place-items:center;font-size:30px;box-shadow:0 4px 0 #f1d28a}
+h1{font-size:clamp(21px,5vw,30px);line-height:1.05;margin:0}
+.sub{font-size:12px;color:var(--muted);margin-top:4px}
+.pills{display:flex;gap:8px}
+.pill{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-weight:800;white-space:nowrap;box-shadow:none;font-size:14px}
+.panel{background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:24px;padding:16px;box-shadow:0 8px 24px rgba(58,91,140,.08);margin-top:13px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h2{font-size:18px;margin:0 0 4px}
+.hint{color:var(--muted);font-size:13px;line-height:1.4}
+.habitats{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 6px;-webkit-overflow-scrolling:touch}
+.habitat{flex:1 0 92px;background:#f5f8ff;border:2px solid transparent;box-shadow:none;padding:10px 8px;text-align:center}
+.habitat.active{border-color:var(--blue);background:#edf4ff}
+.habitat .emoji{display:block;font-size:26px;margin-bottom:3px}
+.habitat small{display:block;color:#b8c2d3;font-size:13px;letter-spacing:1px;margin-top:2px}
+.habitat small.got{color:#f0a91c}
+
+/* mascot */
+.mascotRow{display:flex;align-items:center;gap:10px;margin-top:14px}
+.mascot{width:54px;height:54px;flex:none;border-radius:50%;background:#fff3c4;display:grid;place-items:center;font-size:32px;box-shadow:0 3px 0 #f1d28a}
+.bubble{position:relative;background:#f1f7ff;border:1px solid var(--line);border-radius:16px;padding:10px 13px;font-weight:750;font-size:14px;line-height:1.35;flex:1;min-height:48px;display:flex;align-items:center}
+.bubble::before{content:"";position:absolute;left:-7px;top:50%;margin-top:-7px;width:14px;height:14px;background:#f1f7ff;border-left:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+
+/* board */
+.zone{border-radius:20px;padding:12px 14px;background:#f7faff;border:1px dashed #c8d8ef;margin-top:14px}
+.zone h3{margin:0 0 10px;font-size:13px;color:#53627a}
+.slots,.pieces{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.game[data-size="3"]{--h:104px}
+.game[data-size="6"]{--h:84px}
+.game[data-size="9"]{--h:70px}
+
+.slot{position:relative;height:var(--h);border-radius:16px;padding:0;background:#eaf6f0;border:2px dashed #a7d9c2;box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:transform .15s,background .15s,border-color .15s}
+.slot .sil{font-size:calc(var(--h)*.5);line-height:1;filter:brightness(0) opacity(.3);transition:filter .3s}
+.slot .tag{font-size:11px;font-weight:800;color:#3b7e60;min-height:13px}
+.slot.over{background:#fff5cc;border-color:#e9ba49;transform:scale(1.06)}
+.slot.filled{background:#dff7e9;border:2px solid #7fd0a3}
+.slot.filled .sil{filter:none}
+.slot.hint,.piece.hint{animation:pulse .7s ease-in-out 3}
+.pop{animation:pop .45s ease}
+.shake{animation:shake .45s ease}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px) rotate(-3deg)}40%{transform:translateX(7px) rotate(3deg)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+@keyframes pulse{50%{transform:scale(1.1);box-shadow:0 0 0 6px #ffe39a}}
+@keyframes bob{50%{transform:translateY(-4px)}}
+
+.piece{position:relative;height:var(--h);border-radius:16px;padding:0;background:var(--c);border:2px solid var(--d);box-shadow:0 4px 0 var(--d);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:grab}
+.piece::after{content:"";position:absolute;right:-9px;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:var(--c);box-shadow:2px 0 0 var(--d)}
+.piece::before{content:"";position:absolute;top:-9px;left:50%;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--c);box-shadow:0 -2px 0 var(--d)}
+.piece .em{font-size:calc(var(--h)*.46);line-height:1;pointer-events:none}
+.piece small{font-size:11px;font-weight:800;color:#5a4b30;pointer-events:none}
+.piece.selected{outline:3px solid #f6c85f;animation:bob .8s ease-in-out infinite}
+.piece.dragging{opacity:.25}
+.piece.placed{visibility:hidden;pointer-events:none}
+.piece.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:.97;box-shadow:0 14px 28px rgba(30,50,90,.3);cursor:grabbing;margin:0}
+
+/* fact card */
+.fact{margin-top:14px;display:flex;gap:12px;align-items:center;background:#fffaf0;border:2px solid #f6e2a8;border-radius:18px;padding:12px 14px}
+.fact.empty{background:#f7faff;border:2px dashed #c8d8ef}
+.fact .fe{font-size:40px;flex:none}
+.fact .ft{flex:1;min-width:0}
+.fact .fn{font-weight:850;font-size:15px}
+.fact .fx{font-size:13.5px;line-height:1.45;color:#556379;margin-top:2px}
+.newbadge{display:inline-block;background:#ff8a65;color:#fff;font-size:10px;font-weight:900;border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+.fact .hear{flex:none;padding:9px 11px}
+.fact.show{animation:pop .45s ease}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.primary{background:#6b9cf6;color:#fff;box-shadow:0 3px 0 #4d7ed8}
+.softgreen{background:#dff7e9;box-shadow:0 3px 0 #bfe8d1}
+.softyellow{background:#fff0c4;box-shadow:0 3px 0 #efd98c}
+select{padding:10px;border-radius:13px;border:1px solid #cbd9ee;background:#fff;color:var(--ink);font:inherit;font-weight:750}
+.footer{font-size:11px;color:#7c899c;text-align:center;padding:14px 8px}
+.parent{font-size:12px;color:#64728a;text-decoration:underline;background:none;box-shadow:none;padding:7px}
+
+/* modals */
+.modalback{position:fixed;inset:0;background:#1c2d4780;display:none;align-items:center;justify-content:center;padding:18px;z-index:70}
+.modal{background:#fff;border-radius:24px;padding:22px;max-width:460px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 18px 60px #14233b55}
+.modal h2{font-size:22px}
+.modal p{line-height:1.5;color:#5e6b80}
+.modal .actions button{flex:1}
+.bigstars{font-size:44px;letter-spacing:4px;color:#f0a91c;text-align:center;margin:4px 0}
+.center{text-align:center}
+.modal h3{font-size:14px;margin:14px 0 8px}
+.coll{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px}
+.coll div{background:#f5f8ff;border-radius:14px;padding:8px 4px;text-align:center}
+.coll div.got{background:#fff6dc}
+.coll .e{font-size:28px;line-height:1.1}
+.coll .sil{filter:brightness(0) opacity(.25)}
+.coll small{display:block;font-size:10px;font-weight:800;color:#6b7890;margin-top:2px}
+
+/* effects */
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:80}
+.confetti span{position:absolute;top:-40px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(540deg)}}
+.spark{position:fixed;z-index:55;pointer-events:none;font-size:16px;animation:spark .7s ease-out forwards}
+@keyframes spark{from{transform:translate(-50%,-50%) scale(.6);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.2);opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
+@media(max-width:480px){
+ .app{padding:12px 10px}.panel{padding:12px}.zone{padding:10px}
+ .slots,.pieces{gap:11px}
+ .game[data-size="3"]{--h:92px}.game[data-size="6"]{--h:74px}.game[data-size="9"]{--h:62px}
+ .logo{width:44px;height:44px}.piece small,.slot .tag{font-size:10px}
+ .fact .fe{font-size:32px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand"><div class="logo">🧩</div><div><h1>Happy Animal Puzzle</h1><div class="sub">Match the shadows · collect every animal</div></div></div>
+  <div class="pills">
+    <div class="pill" title="Stars earned">⭐ <span id="stars">0</span></div>
+    <button class="pill btn" id="collBtn" aria-label="Open my animal collection">📖 <span id="found">0</span>/<span id="total">0</span></button>
+  </div>
+</header>
+
+<section class="panel">
+ <div class="topline"><div><h2>Choose a habitat</h2><div class="hint">Pick a world, then match each animal to its shadow.</div></div><button class="btn" id="soundBtn" aria-label="Toggle sound">🔊 Sound on</button></div>
+ <div class="habitats" id="habitats"></div>
+</section>
+
+<section class="panel game" id="game" data-size="6">
+ <div class="topline"><div><h2 id="roundTitle">Forest friends</h2><div class="hint">Drag a colourful piece onto the shadow it fits. You can also tap a piece, then tap a shadow.</div></div><div class="pill" id="progress">0 / 6</div></div>
+ <div class="topline" style="margin-top:12px;gap:12px">
+   <label class="hint" for="difficulty" style="font-weight:800;color:#53627a">DIFFICULTY</label>
+   <select id="difficulty" style="flex:1;max-width:240px">
+     <option value="3">Easy · 3 pieces</option>
+     <option value="6" selected>Medium · 6 pieces</option>
+     <option value="9">Hard · 9 pieces</option>
+   </select>
+ </div>
+
+ <div class="mascotRow"><div class="mascot" id="mascot" aria-hidden="true">🐥</div><div class="bubble" id="feedback" aria-live="polite">Look at the shadows, then match each piece!</div></div>
+
+ <div class="zone"><h3>🏡 SHADOW HOMES</h3><div class="slots" id="slots"></div></div>
+ <div class="zone"><h3>🧩 PUZZLE PIECES</h3><div class="pieces" id="pieces"></div></div>
+
+ <div class="fact empty" id="factCard">
+   <div class="fe" id="factEmoji">🐾</div>
+   <div class="ft"><div class="fn" id="factName">Animal facts appear here!</div><div class="fx" id="factText">Match a piece to learn something amazing.</div></div>
+   <button class="btn hear" id="hearBtn" aria-label="Hear the fact" hidden>🔈</button>
+ </div>
+
+ <div class="actions">
+   <button class="btn primary" id="nextBtn">Next habitat ➜</button>
+   <button class="btn softyellow" id="hintBtn">💡 Hint</button>
+   <button class="btn softgreen" id="shuffleBtn">Mix pieces 🔄</button>
+   <button class="btn" id="resetBtn">Restart level</button>
+ </div>
+</section>
+
+<div class="footer">Prototype • No ads • No account • Progress saved on this device<br><button class="parent" id="parentBtn">For grown-ups</button></div>
+</div>
+
+<!-- modals -->
+<div class="modalback" id="modalParents" role="dialog" aria-modal="true" aria-labelledby="mpTitle">
+ <div class="modal"><h2 id="mpTitle">For grown-ups 🧡</h2>
+ <p>This is an early prototype. It has no ads, accounts, tracking, or real purchases. Progress (stars and collected animals) is stored only on this device. A premium unlock and a child-safety review would be added before release.</p>
+ <div class="actions"><button class="btn" id="resetProgress">Reset saved progress</button><button class="btn primary" data-close data-focus>Got it</button></div></div>
+</div>
+<div class="modalback" id="modalCollection" role="dialog" aria-modal="true" aria-labelledby="mcTitle">
+ <div class="modal"><h2 id="mcTitle">My animal collection 📖</h2><div id="collBody"></div>
+ <div class="actions"><button class="btn primary" data-close data-focus>Close</button></div></div>
+</div>
+<div class="modalback" id="modalWin" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+ <div class="modal center"><div style="font-size:54px">🏆</div><h2 id="winTitle">Great job!</h2><div class="bigstars" id="winStars">★★★</div><p id="winText"></p>
+ <div class="actions"><button class="btn primary" id="winNext" data-focus>Next habitat ➜</button><button class="btn softgreen" id="winAgain">Play again</button></div></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const A=(e,n,f)=>({e,n,f});
+const HABITATS=[
+ {id:"forest",name:"Forest",emoji:"🌳",title:"Forest friends",animals:[
+  A("🦊","Fox","Foxes wrap their fluffy tail around themselves like a warm blanket."),
+  A("🐻","Bear","Bears have an amazing sense of smell, even better than a dog's."),
+  A("🐰","Rabbit","A rabbit's teeth never stop growing, so it keeps chewing to wear them down."),
+  A("🦉","Owl","Owls can turn their heads a very long way around to look behind them."),
+  A("🦔","Hedgehog","Hedgehogs curl into a spiky ball when they feel scared."),
+  A("🦌","Deer","Baby deer, called fawns, have white spots that help them hide."),
+  A("🐿️","Squirrel","Squirrels bury nuts and forget some, which helps new trees grow!"),
+  A("🦝","Raccoon","Raccoons have clever little hands and love to feel things in water."),
+  A("🦇","Bat","Bats are the only mammals that can truly fly.")]},
+ {id:"farm",name:"Farm",emoji:"🚜",title:"Farmyard fun",animals:[
+  A("🐮","Cow","Cows have best friends and like to spend time together."),
+  A("🐷","Pig","Pigs are very clever and can learn lots of tricks."),
+  A("🐔","Chicken","Mother hens cluck softly to their chicks, even before they hatch."),
+  A("🐑","Sheep","Sheep can remember the faces of other sheep for a long time."),
+  A("🐴","Horse","Horses can sleep standing up!"),
+  A("🦆","Duck","Duck feathers are waterproof, so rain slides right off."),
+  A("🐐","Goat","Goats have rectangular pupils that help them see wide around them."),
+  A("🦃","Turkey","A turkey's head can change colour when it gets excited."),
+  A("🐈","Cat","Cats purr when they feel calm and cosy.")]},
+ {id:"ocean",name:"Ocean",emoji:"🌊",title:"Ocean buddies",animals:[
+  A("🐬","Dolphin","Each dolphin has its own special whistle that works like a name."),
+  A("🐢","Turtle","Sea turtles swim back to the beach where they hatched to lay their eggs."),
+  A("🐙","Octopus","An octopus has three hearts!"),
+  A("🐠","Fish","Fish breathe underwater using gills."),
+  A("🦀","Crab","Crabs walk sideways."),
+  A("🦈","Shark","Sharks lived in the oceans before there were any trees on land."),
+  A("🪼","Jellyfish","Jellyfish have no brain, no heart and no bones."),
+  A("🦭","Seal","Seals can dive deep and hold their breath for a long time."),
+  A("🦐","Shrimp","Pistol shrimp snap their claw so fast it makes a loud pop!")]},
+ {id:"jungle",name:"Jungle",emoji:"🌴",title:"Jungle & safari pals",animals:[
+  A("🦁","Lion","Lions live in big family groups called prides."),
+  A("🐘","Elephant","An elephant's trunk works as a hand, a straw and a trumpet."),
+  A("🐒","Monkey","Many monkeys use their long tails to help them balance in the trees."),
+  A("🦜","Parrot","Some parrots can copy words they hear."),
+  A("🦒","Giraffe","A giraffe's tongue is so long it can reach its own ears!"),
+  A("🦓","Zebra","Every zebra has its very own stripe pattern."),
+  A("🐆","Leopard","Leopards are strong enough to carry their food up into trees."),
+  A("🦛","Hippo","Hippos spend most of the day in the water to keep cool."),
+  A("🐊","Crocodile","Crocodiles can live for more than 70 years.")]},
+ {id:"snow",name:"Snow",emoji:"❄️",title:"Snowy friends",animals:[
+  A("🐧","Penguin","Penguins can't fly, but they are fantastic swimmers."),
+  A("🐻‍❄️","Polar Bear","Polar bears have black skin hiding under their white-looking fur."),
+  A("🐋","Whale","Whales sing songs that can travel far through the water."),
+  A("🦌","Reindeer","Reindeer have thick fur that keeps them warm in the freezing snow."),
+  A("🐇","Snow Hare","Hares have strong back legs and can run very fast."),
+  A("🐺","Wolf","Wolves howl to talk to the rest of their pack."),
+  A("🦦","Otter","Sea otters hold hands while they sleep so they don't drift apart."),
+  A("🦣","Mammoth","Woolly mammoths lived long ago and wore thick shaggy fur coats."),
+  A("🦅","Eagle","Eagles can spot tiny animals from very, very far away.")]},
+ {id:"bugs",name:"Bugs",emoji:"🌼",title:"Garden critters",animals:[
+  A("🐝","Bee","Bees do a wiggle dance to tell their friends where the flowers are."),
+  A("🦋","Butterfly","Butterflies taste with their feet!"),
+  A("🐞","Ladybug","Ladybugs gobble up tiny plant-munching bugs called aphids."),
+  A("🐜","Ant","Ants can carry things much heavier than themselves."),
+  A("🕷️","Spider","Spiders make silk for their webs from tiny spots on their bodies."),
+  A("🐌","Snail","A snail carries its home, its shell, on its back."),
+  A("🦗","Cricket","Crickets chirp by rubbing their wings together."),
+  A("🪲","Beetle","Beetles are the biggest group of animals on Earth."),
+  A("🐛","Caterpillar","A caterpillar will one day turn into a butterfly or a moth.")]}
+];
+const TOTAL=HABITATS.reduce((n,h)=>n+h.animals.length,0);
+const PALETTE=[["#ffe3e3","#f2b9b9"],["#fff0cf","#ecd08a"],["#e2f5df","#a8d9a0"],["#dff0ff","#a9cdf0"],["#efe4ff","#c9b1ee"],["#ffe8d6","#f0c09a"],["#dcf7f2","#9fdccf"],["#ffe1f0","#efadcc"],["#f0f5c9","#d3dc86"]];
+const CHEERS=["Perfect fit!","Wow, great job!","You got it!","Super match!","Hooray!","Brilliant!","Awesome!"];
+const OOPS=["Almost! Try another shadow.","Not that one, but you can do it!","Oops! Look at the shape again 👀","So close! Try again."];
+const REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const $=id=>document.getElementById(id);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]]}return r}
+const store={
+ get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+ set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+ clear(){try{["hap-best","hap-found","hap-diff"].forEach(k=>localStorage.removeItem(k))}catch(e){}}
+};
+
+let best=store.get("hap-best",{});
+if(!best||typeof best!=="object"||Array.isArray(best))best={};
+let found=new Set(Array.isArray(store.get("hap-found",[]))?store.get("hap-found",[]):[]);
+let diff=[3,6,9].includes(store.get("hap-diff",6))?store.get("hap-diff",6):6;
+let hIdx=0,animals=[],pieceOrder=[],placed=new Set(),selected=null,mistakes=0,streak=0,wrong={},levelDone=false,soundOn=true,lastFact=null;
+let drag=null,dragEnd=0,lastFocus=null,confirmReset=false;
+
+/* ---------- audio ---------- */
+let ac=null;
+function audio(){
+ if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}
+ if(ac&&ac.state==="suspended"&&ac.resume)ac.resume().catch(()=>{});
+ return ac;
+}
+function tone(f,t0,d,type,v){
+ const c=audio();if(!c)return;
+ try{
+  const o=c.createOscillator(),g=c.createGain();o.type=type||"sine";o.frequency.value=f;o.connect(g);g.connect(c.destination);
+  const t=c.currentTime+t0,vol=v||.09;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.start(t);o.stop(t+d+.05);
+ }catch(e){}
+}
+const sfx={
+ ok(){tone(523,0,.15);tone(784,.1,.22)},
+ no(){tone(260,0,.12,"triangle");tone(200,.11,.18,"triangle")},
+ win(){[523,659,784,1047].forEach((f,i)=>tone(f,i*.14,.32))},
+ pick(){tone(660,0,.07)}
+};
+function play(n){if(soundOn)sfx[n]()}
+function speak(t){
+ if(!soundOn||!("speechSynthesis" in window))return;
+ try{speechSynthesis.c
