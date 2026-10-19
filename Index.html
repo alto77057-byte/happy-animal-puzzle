@@ -297,4 +297,237 @@ const sfx={
 function play(n){if(soundOn)sfx[n]()}
 function speak(t){
  if(!soundOn||!("speechSynthesis" in window))return;
- try{speechSynthesis.c
+ try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=.9;u.pitch=1.15;speechSynthesis.speak(u)}catch(e){}
+}
+
+/* ---------- helpers ---------- */
+function setMsg(t,mascot){$("feedback").textContent=t;if(mascot)$("mascot").textContent=mascot}
+function anim(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),900)}
+function starText(n){return "★".repeat(n)+"☆".repeat(3-n)}
+const pieceEl=n=>$("pieces").querySelector('[data-name="'+n+'"]');
+const slotEl=n=>$("slots").querySelector('[data-name="'+n+'"]');
+function clearSelected(){$("pieces").querySelectorAll(".selected").forEach(p=>p.classList.remove("selected"))}
+function totalStars(){return Object.values(best).reduce((a,b)=>a+(Number(b)||0),0)}
+function updateHeader(){$("stars").textContent=totalStars();$("found").textContent=found.size;$("total").textContent=TOTAL}
+function updateProgress(){$("progress").textContent=placed.size+" / "+animals.length}
+
+function burst(el){
+ if(REDUCED||!el)return;
+ const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+ for(let i=0;i<7;i++){
+  const s=document.createElement("span");s.className="spark";s.textContent=i%2?"✨":"⭐";
+  const a=i/7*Math.PI*2;s.style.left=cx+"px";s.style.top=cy+"px";
+  s.style.setProperty("--dx",Math.cos(a)*50+"px");s.style.setProperty("--dy",Math.sin(a)*50+"px");
+  document.body.appendChild(s);setTimeout(()=>s.remove(),800);
+ }
+}
+function confetti(){
+ if(REDUCED)return;
+ const wrap=document.createElement("div");wrap.className="confetti";
+ const bits=["🎉","⭐","✨","🎈","💛","🧩"];
+ for(let i=0;i<36;i++){
+  const s=document.createElement("span");s.textContent=bits[i%bits.length];
+  s.style.left=Math.random()*100+"vw";s.style.animationDuration=(1.8+Math.random()*1.6)+"s";
+  s.style.animationDelay=(Math.random()*.5)+"s";s.style.fontSize=(16+Math.random()*18)+"px";
+  wrap.appendChild(s);
+ }
+ document.body.appendChild(wrap);setTimeout(()=>wrap.remove(),4200);
+}
+
+/* ---------- rendering ---------- */
+function renderHabitats(){
+ $("habitats").innerHTML=HABITATS.map((h,i)=>{
+  const b=best[h.id+"-"+diff]||0;
+  return '<button class="habitat'+(i===hIdx?" active":"")+'" data-h="'+i+'" aria-pressed="'+(i===hIdx)+'"><span class="emoji">'+h.emoji+'</span>'+h.name+'<small class="'+(b?"got":"")+'" aria-label="'+b+' of 3 stars">'+starText(b)+'</small></button>';
+ }).join("");
+}
+function renderPieces(){
+ $("pieces").innerHTML=pieceOrder.map((a,i)=>{
+  const c=PALETTE[i%PALETTE.length],done=placed.has(a.n);
+  return '<button class="piece'+(done?" placed":"")+(selected===a.n?" selected":"")+'" data-name="'+a.n+'" style="--c:'+c[0]+';--d:'+c[1]+'" aria-label="Puzzle piece: '+a.n+'"'+(done?' tabindex="-1" disabled':'')+'><span class="em">'+a.e+'</span><small>'+a.n+'</small></button>';
+ }).join("");
+}
+function renderSlots(order){
+ $("slots").innerHTML=order.map(a=>{
+  const done=placed.has(a.n);
+  return '<button class="slot'+(done?" filled":"")+'" data-name="'+a.n+'" aria-label="'+(done?"Filled: "+a.n:"Empty shadow home")+'"><span class="sil" aria-hidden="true">'+a.e+'</span><span class="tag">'+(done?a.n:"")+'</span></button>';
+ }).join("");
+}
+function startLevel(msg){
+ const h=HABITATS[hIdx];
+ animals=shuffle(h.animals).slice(0,diff);
+ pieceOrder=shuffle(animals);
+ placed=new Set();selected=null;mistakes=0;streak=0;wrong={};levelDone=false;
+ $("game").dataset.size=String(diff);
+ $("roundTitle").textContent=h.title;
+ renderHabitats();renderSlots(shuffle(animals));renderPieces();updateProgress();updateHeader();
+ setMsg(msg||"Look at the shadows, then match each piece! 🐾","🐥");
+}
+
+function showFact(a,isNew){
+ lastFact=a;
+ const c=$("factCard");c.classList.remove("empty");
+ $("factEmoji").textContent=a.e;
+ $("factName").innerHTML="";
+ $("factName").appendChild(document.createTextNode(a.n));
+ if(isNew){const b=document.createElement("span");b.className="newbadge";b.textContent="NEW!";$("factName").appendChild(b)}
+ $("factText").textContent=a.f;
+ $("hearBtn").hidden=!("speechSynthesis" in window);
+ anim(c,"show");
+}
+
+/* ---------- game logic ---------- */
+function attempt(name,slot){
+ if(levelDone||placed.has(name)||!slot)return;
+ if(slot.classList.contains("filled")){setMsg("That home is already full. Try another shadow!","🤗");return}
+ if(slot.dataset.name===name)success(name,slot);else fail(name,slot);
+}
+function success(name,slot){
+ const a=animals.find(x=>x.n===name);
+ placed.add(name);
+ slot.classList.add("filled");anim(slot,"pop");
+ slot.setAttribute("aria-label","Filled: "+name);slot.querySelector(".tag").textContent=name;
+ const pe=pieceEl(name);if(pe){pe.classList.remove("selected","dragging");pe.classList.add("placed");pe.disabled=true;pe.tabIndex=-1}
+ selected=null;clearSelected();streak++;
+ const key=HABITATS[hIdx].id+":"+name,isNew=!found.has(key);
+ if(isNew){found.add(key);store.set("hap-found",[...found])}
+ setMsg(pick(CHEERS)+(streak>=3?" 🔥 "+streak+" in a row!":""),"🥳");
+ play("ok");burst(slot);showFact(a,isNew);speak(name);updateProgress();updateHeader();
+ if(placed.size===animals.length){levelDone=true;setTimeout(win,900)}
+}
+function fail(name,slot){
+ mistakes++;streak=0;wrong[name]=(wrong[name]||0)+1;
+ play("no");anim(slot,"shake");anim(pieceEl(name),"shake");
+ setMsg(pick(OOPS),"🤗");
+ if(wrong[name]>=2){const right=slotEl(name);if(right){anim(right,"hint");setMsg("Here's a clue — look at the glowing shadow! ✨","🤗")}}
+}
+function win(){
+ const h=HABITATS[hIdx];
+ const s=mistakes===0?3:mistakes<=2?2:1,key=h.id+"-"+diff;
+ if(s>(best[key]||0)){best[key]=s;store.set("hap-best",best)}
+ updateHeader();renderHabitats();
+ $("winTitle").textContent=["","Nice work!","Great job!","Perfect puzzle!"][s];
+ $("winStars").textContent=starText(s);
+ $("winText").textContent="You matched all "+animals.length+" "+h.name.toLowerCase()+" animals"+(mistakes?" with "+mistakes+" little "+(mistakes===1?"slip":"slips")+"!":" without a single slip!");
+ setMsg("Level complete! You're a puzzle star!","🏆");
+ play("win");confetti();openModal("modalWin");
+}
+function select(name){
+ selected=selected===name?null:name;clearSelected();
+ if(selected){const el=pieceEl(selected);if(el)el.classList.add("selected");play("pick");setMsg("Now tap the shadow that fits the "+name+"!","🐥")}
+ else setMsg("Pick a piece to start!","🐥");
+}
+function nextHabitat(){hIdx=(hIdx+1)%HABITATS.length;startLevel("New habitat, new friends to find! 🐾")}
+function giveHint(){
+ if(levelDone)return;
+ let name=selected&&!placed.has(selected)?selected:null;
+ if(!name){const a=pieceOrder.find(x=>!placed.has(x.n));name=a&&a.n}
+ if(!name)return;
+ anim(pieceEl(name),"hint");anim(slotEl(name),"hint");
+ setMsg("Try this glowing piece and its shadow! 👀","💡");
+}
+
+/* ---------- drag & drop (mouse, pen, touch) ---------- */
+function ghostPoint(e){return{x:e.clientX,y:e.clientY-(e.pointerType==="touch"?36:0)}}
+function slotAt(x,y){const t=document.elementFromPoint(x,y);return t&&t.closest?t.closest(".slot"):null}
+function setOver(slot){
+ $("slots").querySelectorAll(".over").forEach(s=>{if(s!==slot)s.classList.remove("over")});
+ if(slot&&!slot.classList.contains("filled"))slot.classList.add("over");
+}
+function startDrag(){
+ const r=drag.el.getBoundingClientRect(),g=drag.el.cloneNode(true);
+ g.classList.add("ghost");g.classList.remove("selected","hint","shake");
+ g.style.width=r.width+"px";g.style.height=r.height+"px";
+ g.removeAttribute("aria-label");g.setAttribute("aria-hidden","true");g.tabIndex=-1;
+ document.body.appendChild(g);
+ drag.ghost=g;drag.w=r.width;drag.h=r.height;drag.started=true;
+ drag.el.classList.add("dragging");selected=null;clearSelected();play("pick");
+}
+function finishDrag(e,commit){
+ if(!drag||e.pointerId!==drag.id)return;
+ const d=drag;drag=null;
+ try{d.el.releasePointerCapture(d.id)}catch(_){}
+ if(!d.started)return;
+ if(d.ghost)d.ghost.remove();
+ d.el.classList.remove("dragging");setOver(null);dragEnd=performance.now();
+ if(!commit)return;
+ const p=ghostPoint(e),slot=slotAt(p.x,p.y);
+ if(slot)attempt(d.name,slot);else setMsg("Drop the piece onto one of the shadow shapes! 👆","🐥");
+}
+const piecesEl=$("pieces");
+piecesEl.addEventListener("pointerdown",e=>{
+ const el=e.target.closest(".piece");
+ if(!el||el.classList.contains("placed")||levelDone)return;
+ if(e.pointerType==="mouse"&&e.button!==0)return;
+ drag={el,name:el.dataset.name,id:e.pointerId,sx:e.clientX,sy:e.clientY,started:false,ghost:null,w:0,h:0};
+ try{el.setPointerCapture(e.pointerId)}catch(_){}
+});
+piecesEl.addEventListener("pointermove",e=>{
+ if(!drag||e.pointerId!==drag.id)return;
+ if(!drag.started){if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<8)return;startDrag()}
+ const p=ghostPoint(e);
+ drag.ghost.style.transform="translate("+(p.x-drag.w/2)+"px,"+(p.y-drag.h/2)+"px) scale(1.08)";
+ setOver(slotAt(p.x,p.y));
+});
+piecesEl.addEventListener("pointerup",e=>finishDrag(e,true));
+piecesEl.addEventListener("pointercancel",e=>finishDrag(e,false));
+piecesEl.addEventListener("contextmenu",e=>e.preventDefault());
+piecesEl.addEventListener("click",e=>{
+ const el=e.target.closest(".piece");
+ if(!el||el.classList.contains("placed")||levelDone)return;
+ if(performance.now()-dragEnd<400)return;
+ select(el.dataset.name);
+});
+$("slots").addEventListener("click",e=>{
+ const slot=e.target.closest(".slot");if(!slot||levelDone)return;
+ if(selected)attempt(selected,slot);else setMsg("Choose a puzzle piece first! 🧩","🐥");
+});
+
+/* ---------- modals ---------- */
+function openModal(id){
+ lastFocus=document.activeElement;
+ const m=$(id);m.style.display="flex";
+ const f=m.querySelector("[data-focus]")||m.querySelector("button");if(f)f.focus();
+}
+function closeModals(){
+ document.querySelectorAll(".modalback").forEach(m=>m.style.display="none");
+ confirmReset=false;$("resetProgress").textContent="Reset saved progress";
+ if(lastFocus&&lastFocus.focus)try{lastFocus.focus()}catch(e){}
+}
+function renderCollection(){
+ $("collBody").innerHTML='<p style="margin:0 0 4px">You found <b>'+found.size+'</b> of '+TOTAL+' animals. Keep playing to find them all!</p>'+HABITATS.map(h=>{
+  const n=h.animals.filter(a=>found.has(h.id+":"+a.n)).length;
+  return '<h3>'+h.emoji+' '+h.name+' · '+n+'/'+h.animals.length+'</h3><div class="coll">'+h.animals.map(a=>{
+   const got=found.has(h.id+":"+a.n);
+   return '<div class="'+(got?"got":"")+'"><div class="e'+(got?"":" sil")+'">'+a.e+'</div><small>'+(got?a.n:"?")+'</small></div>';
+  }).join("")+'</div>';
+ }).join("");
+}
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeModals));
+document.querySelectorAll(".modalback").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModals()}));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModals()});
+
+/* ---------- controls ---------- */
+$("habitats").addEventListener("click",e=>{const b=e.target.closest("[data-h]");if(!b)return;hIdx=+b.dataset.h;startLevel()});
+$("difficulty").value=String(diff);
+$("difficulty").addEventListener("change",()=>{diff=Number($("difficulty").value);store.set("hap-diff",diff);startLevel("New challenge ready! Match the pieces to their shadows.")});
+$("nextBtn").addEventListener("click",nextHabitat);
+$("hintBtn").addEventListener("click",giveHint);
+$("shuffleBtn").addEventListener("click",()=>{pieceOrder=shuffle(pieceOrder);renderPieces();setMsg("Pieces mixed! Find their shadows.","🐥")});
+$("resetBtn").addEventListener("click",()=>startLevel("Level restarted. Give it another try! 🌟"));
+$("soundBtn").addEventListener("click",()=>{soundOn=!soundOn;$("soundBtn").textContent=soundOn?"🔊 Sound on":"🔇 Sound off";if(!soundOn&&"speechSynthesis" in window)try{speechSynthesis.cancel()}catch(e){}});
+$("hearBtn").addEventListener("click",()=>{if(lastFact)speak(lastFact.n+". "+lastFact.f)});
+$("parentBtn").addEventListener("click",()=>openModal("modalParents"));
+$("collBtn").addEventListener("click",()=>{renderCollection();openModal("modalCollection")});
+$("winNext").addEventListener("click",()=>{closeModals();nextHabitat()});
+$("winAgain").addEventListener("click",()=>{closeModals();startLevel("Let's play again! 🌟")});
+$("resetProgress").addEventListener("click",()=>{
+ if(!confirmReset){confirmReset=true;$("resetProgress").textContent="Tap again to confirm";return}
+ store.clear();best={};found=new Set();diff=6;$("difficulty").value="6";closeModals();startLevel("Fresh start! 🌱");
+});
+
+startLevel();
+})();
+</script>
+</body>
+</html>
